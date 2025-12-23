@@ -16,7 +16,6 @@ const groq = new OpenAI({
     baseURL: "https://api.groq.com/openai/v1",
 })
 
-// Hugging Face para embeddings (gratuito)
 const hf = new HfInference(HUGGINGFACE_API_KEY)
 
 const f1Data = [

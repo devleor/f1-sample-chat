@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { Send, User, Image as ImageIcon, Video, Pencil, MessageSquare, Plus, Menu, Trash2, X, Copy, ThumbsUp, ThumbsDown, RotateCw, MoreHorizontal, ChevronDown, Database, AlertTriangle, CheckCircle2, Loader2 } from "lucide-react"
+import { Send, User, Image as ImageIcon, Video, Pencil, MessageSquare, Plus, Menu, Trash2, X, Copy, ThumbsUp, ThumbsDown, RotateCw, MoreHorizontal, ChevronDown, Database, Globe, Layers, Cpu, Workflow } from "lucide-react"
 import Image from "next/image"
 import sennaLogo from "./assets/senna.png"
 import { SplashLogo } from "@/components/SplashLogo"
@@ -42,13 +42,17 @@ export default function Home() {
 
   // Context / Knowledge Base State
   const [isContextModalOpen, setIsContextModalOpen] = React.useState(false)
-  const [ingestStatus, setIngestStatus] = React.useState<{ status: 'idle' | 'processing' | 'completed' | 'error', message?: string, progress?: number, startTime?: number }>({ status: 'idle', progress: 0 })
-  const [elapsedTime, setElapsedTime] = React.useState<string>("00:00")
-  const [contextUrls, setContextUrls] = React.useState([
-    'https://en.wikipedia.org/wiki/2024_Formula_One_World_Championship',
-    'https://www.formula1.com/en/teams.html'
-  ].join('\n'))
   const [showSplash, setShowSplash] = React.useState(true) // Start with Splash
+  const [sourceUrls] = React.useState([
+    'https://en.wikipedia.org/wiki/2024_Formula_One_World_Championship',
+    'https://en.wikipedia.org/wiki/2025_Formula_One_World_Championship',
+    'https://www.formula1.com/en/teams.html',
+    'https://www.formula1.com/en/drivers.html',
+    'https://www.formula1.com/en/results/2025/races',
+    'https://www.formula1.com/en/results/2024/races',
+    'https://www.skysports.com/f1',
+    'https://www.skysports.com/f1/news/12433/13071399/f1-2024-cars-launched-ferrari-mercedes-red-bull-and-more-revealed-for-new-formula-1-season'
+  ])
 
   const scrollRef = React.useRef<HTMLDivElement>(null)
 
@@ -98,62 +102,6 @@ export default function Home() {
   React.useEffect(() => {
     scrollToBottom()
   }, [sessions, currentSessionId])
-
-  // Poll Ingest Status
-  React.useEffect(() => {
-
-
-    const checkStatus = async () => {
-      try {
-        const res = await fetch('/api/ingest/status')
-        const data = await res.json()
-
-        // Only update if state changed to avoid re-renders (simplified check)
-        setIngestStatus(prev => {
-          if (prev.status !== data.status || prev.message !== data.message) {
-            return data
-          }
-          return prev
-        })
-
-        if (data.status === 'processing' && data.startTime) {
-          const seconds = Math.floor((Date.now() - data.startTime) / 1000)
-          const m = Math.floor(seconds / 60).toString().padStart(2, '0')
-          const s = (seconds % 60).toString().padStart(2, '0')
-          setElapsedTime(`${m}:${s}`)
-        }
-
-        if (data.status === 'completed') {
-          setIngestStatus(prev => ({ ...prev, progress: 100 }))
-        }
-      } catch (e) {
-        console.error("Status check failed", e)
-      }
-    }
-
-    // Check immediately on mount and then interval
-    checkStatus()
-    const interval = setInterval(checkStatus, 1000) // Update timer every second
-
-    return () => clearInterval(interval)
-  }, [])
-
-  const startIngestion = async () => {
-    setIngestStatus({ status: 'processing', message: 'Starting...' })
-    setIsContextModalOpen(false) // Close modal
-    try {
-      await fetch('/api/ingest', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ urls: contextUrls.split('\n').filter(u => u.trim()) })
-      })
-      // Polling will pick up the rest
-    } catch (e) {
-      console.error(e)
-      setIngestStatus({ status: 'error', message: 'Failed to start ingestion' })
-    }
-  }
-
 
   // --- Actions ---
 
@@ -341,8 +289,8 @@ export default function Home() {
 
   // Suggestion chips data
   const suggestions = [
-    { icon: <ImageIcon className="w-4 h-4 text-yellow-400" />, label: "Show me the 2024 cars", action: "What do the 2024 F1 cars look like?" },
-    { icon: <Video className="w-4 h-4 text-blue-400" />, label: "Best overtakes of 2023", action: "Tell me about the best overtakes of 2023" },
+    { icon: <ImageIcon className="w-4 h-4 text-yellow-400" />, label: "About the 2025 cars", action: "What do the 2025 F1 cars look like?" },
+    { icon: <Video className="w-4 h-4 text-blue-400" />, label: "Best overtakes of 2025", action: "Tell me about the best overtakes of 2025" },
     { icon: <Pencil className="w-4 h-4 text-purple-400" />, label: "Write a poem about Senna", action: "Write a short poem about Ayrton Senna" },
   ]
 
@@ -354,7 +302,7 @@ export default function Home() {
       {/* --- Sidebar (History) --- */}
       <motion.div
         className={cn(
-          "fixed md:relative z-20 h-full bg-zinc-900/50 backdrop-blur-xl border-r border-white/10 w-[280px] flex flex-col transition-all duration-300 transform",
+          "hidden md:flex fixed md:relative z-20 h-full bg-zinc-900/50 backdrop-blur-xl border-r border-white/10 w-[280px] flex-col transition-all duration-300 transform",
           isSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0 md:w-[280px] w-0"
         )}
       >
@@ -410,38 +358,13 @@ export default function Home() {
         </ScrollArea>
 
         {/* Context Button */}
-        <div className="p-4 border-t border-white/5">
+        <div className="p-4 border-t border-white/5 hidden md:block">
           <button
             onClick={() => setIsContextModalOpen(true)}
-            className={cn(
-              "flex items-center gap-2 w-full px-3 py-2 text-sm rounded-lg transition-colors",
-              ingestStatus.status === 'processing' ? "bg-blue-500/10 text-blue-400" : "text-zinc-400 hover:text-white hover:bg-white/5"
-            )}
+            className="flex items-center gap-2 w-full px-3 py-2 text-sm text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
           >
-            {ingestStatus.status === 'processing' ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />
-                <div className="flex-1 flex flex-col items-start overflow-hidden">
-                  <span className="text-xs font-medium truncate w-full flex justify-between">
-                    <span>Updating...</span>
-                    <span>{ingestStatus.progress || 0}%</span>
-                  </span>
-                  <div className="h-0.5 w-full bg-blue-500/20 mt-1.5 rounded-full overflow-hidden">
-                    <motion.div
-                      className="h-full bg-blue-500"
-                      initial={{ width: 0 }}
-                      animate={{ width: `${ingestStatus.progress || 0}%` }}
-                      transition={{ duration: 0.5 }}
-                    />
-                  </div>
-                </div>
-              </>
-            ) : (
-              <>
-                <Database className="w-4 h-4" />
-                <span>Knowledge Base</span>
-              </>
-            )}
+            <Database className="w-4 h-4" />
+            <span>Knowledge Base</span>
           </button>
         </div>
       </motion.div>
@@ -459,9 +382,7 @@ export default function Home() {
 
         {/* Mobile Header */}
         <div className="md:hidden flex items-center justify-between p-4 border-b border-white/5 bg-black/50 backdrop-blur-md sticky top-0 z-30">
-          <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 text-zinc-400">
-            <Menu className="w-6 h-6" />
-          </button>
+          <div className="w-6" /> {/* Spacer for centering if needed, or just remove menu button */}
           <div className="flex items-center gap-1">
             <span className="font-semibold text-sm">F1 2025</span>
             <ChevronDown className="w-3 h-3 opacity-50" />
@@ -625,8 +546,11 @@ export default function Home() {
                 <Send className="w-4 h-4 ml-0.5" />
               </Button>
             </div>
-            <div className="text-center mt-3 text-xs text-zinc-500 font-medium">
-              ChatBot can make mistakes. Check important information.
+            <div className="text-center mt-3 text-xs text-zinc-500 font-medium flex items-center justify-center gap-2">
+              <span>F1 AI can make mistakes. Check important information.</span>
+              <a href="https://devleor.io" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-2 py-0.5 rounded border border-white/10 transition-colors">
+                Hire me
+              </a>
             </div>
           </div>
         </div>
@@ -641,109 +565,90 @@ export default function Home() {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-[#1c1c1e] w-full max-w-lg rounded-2xl border border-white/10 shadow-2xl overflow-hidden"
+                className="bg-[#1c1c1e] w-full max-w-2xl rounded-2xl border border-white/10 shadow-2xl overflow-hidden"
               >
-                <div className="p-6 space-y-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-white">
-                      <Database className="w-5 h-5 text-blue-500" />
-                      <h2 className="text-lg font-semibold">Update Knowledge Base</h2>
-                    </div>
+                <div className="p-6">
+
+                  {/* Header */}
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-semibold flex items-center gap-2 text-white">
+                      <Database className="w-6 h-6 text-blue-500" />
+                      System Knowledge
+                    </h2>
                     <button onClick={() => setIsContextModalOpen(false)} className="text-zinc-500 hover:text-white">
                       <X className="w-5 h-5" />
                     </button>
                   </div>
 
-                  <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-3 flex gap-3">
-                    <AlertTriangle className="w-4 h-4 text-yellow-500 flex-shrink-0 mt-0.5" />
-                    <p className="text-xs text-yellow-500/90 leading-relaxed">
-                      <strong>Warning:</strong> This will delete the current database and scrape the new URLs. This happens in the background.
-                    </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Column 1: Sources */}
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2 text-sm font-medium text-zinc-300">
+                        <Globe className="w-4 h-4 text-blue-400" />
+                        Data Sources
+                      </div>
+                      <ScrollArea className="h-48 pr-4">
+                        <div className="space-y-2">
+                          {sourceUrls.map((url, i) => (
+                            <div key={i} className="group flex items-center gap-2 p-2 bg-white/5 rounded-lg border border-white/5 hover:border-blue-500/30 transition-all">
+                              <div className="w-1.5 h-1.5 rounded-full bg-blue-500/50 group-hover:bg-blue-400 flex-shrink-0" />
+                              <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs text-zinc-400 truncate hover:text-white hover:underline transition-colors flex-1">
+                                {url}
+                              </a>
+                            </div>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    </div>
+
+                    {/* Column 2: Tech Stack */}
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2 text-sm font-medium text-zinc-300">
+                        <Layers className="w-4 h-4 text-purple-400" />
+                        Tech Stack
+                      </div>
+                      <div className="space-y-2">
+                        <div className="p-3 bg-white/5 rounded-xl border border-white/5 flex items-center gap-3">
+                          <div className="p-2 bg-purple-500/20 rounded-lg">
+                            <Database className="w-4 h-4 text-purple-400" />
+                          </div>
+                          <div>
+                            <div className="text-sm font-medium text-white">Astra DB</div>
+                            <div className="text-xs text-zinc-500">Vector Database (DataStax)</div>
+                          </div>
+                        </div>
+
+                        <div className="p-3 bg-white/5 rounded-xl border border-white/5 flex items-center gap-3">
+                          <div className="p-2 bg-green-500/20 rounded-lg">
+                            <Workflow className="w-4 h-4 text-green-400" />
+                          </div>
+                          <div>
+                            <div className="text-sm font-medium text-white">LangChain</div>
+                            <div className="text-xs text-zinc-500">Orchestration & RAG</div>
+                          </div>
+                        </div>
+
+                        <div className="p-3 bg-white/5 rounded-xl border border-white/5 flex items-center gap-3">
+                          <div className="p-2 bg-yellow-500/20 rounded-lg">
+                            <Cpu className="w-4 h-4 text-yellow-400" />
+                          </div>
+                          <div>
+                            <div className="text-sm font-medium text-white">Hugging Face</div>
+                            <div className="text-xs text-zinc-500">Inference (Qwen 2.5)</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Source URLs</label>
-                    <textarea
-                      value={contextUrls}
-                      onChange={(e) => setContextUrls(e.target.value)}
-                      className="w-full h-40 bg-black/20 border border-white/10 rounded-xl p-3 text-sm text-zinc-300 focus:outline-none focus:border-blue-500/50 resize-none font-mono"
-                      placeholder="https://..."
-                    />
-                  </div>
-
-                  <div className="flex justify-end gap-3">
-                    <Button variant="ghost" onClick={() => setIsContextModalOpen(false)} className="text-zinc-400 hover:text-white">Cancel</Button>
-                    <Button onClick={startIngestion} className="bg-blue-600 hover:bg-blue-500 text-white rounded-lg">
-                      Start Update
+                  <div className="mt-8 pt-4 border-t border-white/5 flex justify-end">
+                    <Button onClick={() => setIsContextModalOpen(false)} className="bg-white text-black hover:bg-zinc-200">
+                      Close
                     </Button>
                   </div>
                 </div>
               </motion.div>
             </div>
-          )}
-        </AnimatePresence>
-
-        {/* --- Status Notification --- */}
-        <AnimatePresence>
-          {(ingestStatus.status === 'processing' || ingestStatus.status === 'completed' || ingestStatus.status === 'error') && (
-            <motion.div
-              initial={{ opacity: 0, y: 50 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 50 }}
-              className="fixed bottom-6 right-6 z-50 max-w-sm w-full"
-            >
-              <div className={cn(
-                "p-4 rounded-xl border shadow-2xl backdrop-blur-xl flex items-center gap-4",
-                ingestStatus.status === 'processing' ? "bg-zinc-900/90 border-white/10" :
-                  ingestStatus.status === 'completed' ? "bg-green-900/90 border-green-500/20" :
-                    "bg-red-900/90 border-red-500/20"
-              )}>
-                {ingestStatus.status === 'processing' && (
-                  <>
-                    <div className="flex-1 space-y-2">
-                      <div className="flex items-center justify-between text-xs text-white">
-                        <span className="font-medium">Updating Knowledge Base...</span>
-                        <span className="font-mono text-blue-400">{elapsedTime}</span>
-                      </div>
-
-                      <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
-                        <motion.div
-                          className="h-full bg-blue-500 rounded-full"
-                          initial={{ width: 0 }}
-                          animate={{ width: `${ingestStatus.progress || 0}%` }}
-                          transition={{ duration: 0.5 }}
-                        />
-                      </div>
-
-                      <div className="flex justify-between text-[10px] text-zinc-500 uppercase tracking-wider">
-                        <span>{ingestStatus.message}</span>
-                        <span>{ingestStatus.progress || 0}%</span>
-                      </div>
-                    </div>
-                  </>
-                )}
-                {ingestStatus.status === 'completed' && (
-                  <>
-                    <CheckCircle2 className="w-5 h-5 text-green-500" />
-                    <div className="flex-1 space-y-0.5">
-                      <h4 className="text-sm font-medium text-white">Update Complete</h4>
-                      <p className="text-xs text-green-200/60">Knowledge base is ready.</p>
-                    </div>
-                    <button onClick={() => setIngestStatus({ status: 'idle' })} className="text-zinc-500 hover:text-white"><X className="w-4 h-4" /></button>
-                  </>
-                )}
-                {ingestStatus.status === 'error' && (
-                  <>
-                    <AlertTriangle className="w-5 h-5 text-red-500" />
-                    <div className="flex-1 space-y-0.5">
-                      <h4 className="text-sm font-medium text-white">Update Failed</h4>
-                      <p className="text-xs text-red-200/60">Check console for details.</p>
-                    </div>
-                    <button onClick={() => setIngestStatus({ status: 'idle' })} className="text-zinc-500 hover:text-white"><X className="w-4 h-4" /></button>
-                  </>
-                )}
-              </div>
-            </motion.div>
           )}
         </AnimatePresence>
       </div>
