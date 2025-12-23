@@ -10,7 +10,7 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@datastax/astra-db-ts": "^2.1.2",
+    "@datastax/astra-db-ts": "^1.5.0",
     "@huggingface/inference": "^4.13.5",
     "@langchain/community": "^1.1.1",
     "@langchain/core": "^1.1.7",
