@@ -1,0 +1,4 @@
+{
+  "error": "Failed to generate response",
+  "details": "Model HuggingFaceH4/zephyr-7b-beta is not supported for task text-generation and provider featherless-ai. Supported task: conversational."
+}

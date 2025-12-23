@@ -6,12 +6,32 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "seed": "ts-node ./scripts/loadDb.ts",
     "lint": "eslint"
   },
   "dependencies": {
+    "@datastax/astra-db-ts": "^2.1.2",
+    "@huggingface/inference": "^4.13.5",
+    "@langchain/community": "^1.1.1",
+    "@langchain/core": "^1.1.7",
+    "@radix-ui/react-scroll-area": "^1.2.10",
+    "@radix-ui/react-slot": "^1.2.4",
+    "ai": "^6.0.1",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "dotenv": "^17.2.3",
+    "framer-motion": "^12.23.26",
+    "langchain": "^1.2.2",
+    "lucide-react": "^0.562.0",
     "next": "16.1.1",
+    "openai": "^6.15.0",
+    "puppeteer": "^24.34.0",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "tailwind-merge": "^3.4.0",
+    "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -21,6 +41,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
     "tailwindcss": "^4",
+    "ts-node": "^10.9.2",
     "typescript": "^5"
   }
 }

@@ -1,0 +1,7 @@
+﻿­ƒÅÄ´©Å Testing F1 GPT API...
+
+
+­ƒÆí Make sure to:
+1. Start the Next.js server: npm run dev
+2. Ensure your .env file has all required keys
+3. Check that the database seeding completed successfully
