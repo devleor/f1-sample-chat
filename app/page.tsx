@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { Send, User, Image as ImageIcon, Video, Pencil, MessageSquare, Plus, Menu, Trash2, X, Copy, ThumbsUp, ThumbsDown, RotateCw, MoreHorizontal, ChevronDown, Database, Globe, Layers, Cpu, Workflow } from "lucide-react"
+import { Send, User, Image as ImageIcon, Video, Pencil, MessageSquare, Plus, Menu, Trash2, X, Copy, ThumbsUp, ThumbsDown, RotateCw, MoreHorizontal, ChevronDown, Database, Globe, Layers, Cpu, Workflow, Bot } from "lucide-react"
 import Image from "next/image"
 import sennaLogo from "./assets/senna.png"
 import { SplashLogo } from "@/components/SplashLogo"
@@ -635,6 +635,16 @@ export default function Home() {
                           <div>
                             <div className="text-sm font-medium text-white">Hugging Face</div>
                             <div className="text-xs text-zinc-500">Inference (Qwen 2.5)</div>
+                          </div>
+                        </div>
+
+                        <div className="p-3 bg-white/5 rounded-xl border border-white/5 flex items-center gap-3">
+                          <div className="p-2 bg-cyan-500/20 rounded-lg">
+                            <Bot className="w-4 h-4 text-cyan-400" />
+                          </div>
+                          <div>
+                            <div className="text-sm font-medium text-white">Puppeteer</div>
+                            <div className="text-xs text-zinc-500">Web Scraping</div>
                           </div>
                         </div>
                       </div>

@@ -42,16 +42,23 @@ export async function POST(req: NextRequest) {
 
 
     // 4. Create enhanced system prompt with F1 context
-    const systemPrompt = `You are an expert Formula 1 assistant. Use the following F1 information to provide detailed, accurate answers about Formula 1.
-
-F1 Context:
+    const systemPrompt = `You are an AI assistant who knows everything about Formula One.
+Use the below context to augment what you know about Formula One racing.
+The context will provide you with the most recent page data from wikipedia,
+the official F1 website and others.
+If the context doesn't include the information you need answer based on your
+existing knowledge and don't mention the source of your information or
+what the context does or doesn't include.
+Format responses using markdown where applicable and don't return
+images.
+----------------
+START CONTEXT
 ${context}
-
-Instructions:
-- Use the provided F1 context to answer questions accurately
-- If the context doesn't contain relevant information, use your general F1 knowledge
-- Be enthusiastic and knowledgeable about all aspects of Formula 1
-- Provide specific details when available`;
+END CONTEXT
+----------------
+QUESTION: ${lastMessage.content}
+----------------
+`;
 
     // 5. Generate response with Hugging Face (Streaming)
     const stream = new ReadableStream({

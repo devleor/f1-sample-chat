@@ -40,7 +40,7 @@ const splitter = new RecursiveCharacterTextSplitter({
 })
 
 
-const createCollection = async (similarityMetric: SimilarityMetric = "cosine") => {
+const createCollection = async (similarityMetric: SimilarityMetric = "dot_product") => {
     try {
         // Try to drop existing collection first
         await db.dropCollection(ASTRA_DB_COLLECTION)
