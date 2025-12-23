@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { DataAPIClient } from "@datastax/astra-db-ts";
 import { HfInference } from "@huggingface/inference";
+import redis from "@/lib/redis";
 
 
 
@@ -14,8 +15,13 @@ const db = client.db(process.env.ASTRA_DB_API_ENDPOINT, {
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages } = await req.json();
+    const { messages, sessionId } = await req.json();
     const lastMessage = messages[messages.length - 1];
+
+    if (sessionId) {
+      await redis.rpush(`chat:${sessionId}`, JSON.stringify(lastMessage));
+      await redis.expire(`chat:${sessionId}`, 86400); // 24 hours TTL
+    }
 
     // 1. Generate embedding for user question
     const questionEmbedding = await hf.featureExtraction({
@@ -63,6 +69,7 @@ QUESTION: ${lastMessage.content}
     // 5. Generate response with Hugging Face (Streaming)
     const stream = new ReadableStream({
       async start(controller) {
+        let fullResponse = "";
         try {
           for await (const chunk of hf.chatCompletionStream({
             model: "Qwen/Qwen2.5-72B-Instruct",
@@ -78,9 +85,17 @@ QUESTION: ${lastMessage.content}
           })) {
             const content = chunk.choices[0]?.delta?.content || "";
             if (content) {
+              fullResponse += content;
               controller.enqueue(new TextEncoder().encode(content));
             }
           }
+
+          if (sessionId && fullResponse) {
+            const assistantMsg = { role: 'assistant', content: fullResponse, timestamp: new Date() };
+            await redis.rpush(`chat:${sessionId}`, JSON.stringify(assistantMsg));
+            await redis.expire(`chat:${sessionId}`, 86400);
+          }
+
           controller.close();
         } catch (err) {
           console.error("Streaming error:", err);
