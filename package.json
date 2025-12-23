@@ -19,7 +19,7 @@
     "ai": "^6.0.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "dotenv": "^17.2.3",
+    "dotenv": "^16.4.5",
     "framer-motion": "^12.23.26",
     "gsap": "^3.14.2",
     "langchain": "^1.2.2",
