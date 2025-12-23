@@ -21,8 +21,12 @@ const hf = new HfInference(HUGGINGFACE_API_KEY)
 
 const f1Data = [
     'https://en.wikipedia.org/wiki/2024_Formula_One_World_Championship',
+    'https://en.wikipedia.org/wiki/2025_Formula_One_World_Championship',
     'https://www.formula1.com/en/teams.html',
     'https://www.formula1.com/en/drivers.html',
+    'https://www.formula1.com/en/results/2025/races',
+    'https://www.formula1.com/en/results/2024/races',
+    'https://www.skysports.com/f1',
     'https://www.skysports.com/f1/news/12433/13071399/f1-2024-cars-launched-ferrari-mercedes-red-bull-and-more-revealed-for-new-formula-1-season'
 ];
 
