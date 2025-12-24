@@ -450,87 +450,99 @@ export default function Home() {
       </AnimatePresence>
 
       {/* Sidebar */}
-      <motion.div
-        animate={{ width: isSidebarCollapsed ? 60 : 260 }}
-        transition={{ duration: 0.5, ease: "easeInOut" }}
-        className={cn(
-          "fixed inset-y-0 left-0 z-50 bg-black md:relative md:translate-x-0 overflow-hidden",
-          isSidebarOpen ? "translate-x-0 w-[260px]" : "-translate-x-full w-[260px]",
-          "md:translate-x-0" // Reset translate for desktop
-        )}
-      >
-        <div className="flex flex-col h-full p-4">
-          <div className={cn("flex items-center mb-8", isSidebarCollapsed ? "justify-center" : "justify-between px-2")}>
-            <Button variant="ghost" size="icon" className="hidden md:flex text-zinc-400 hover:text-white" onClick={toggleSidebar}>
-              {isSidebarCollapsed ? <PanelLeftOpen className="w-5 h-5" /> : <PanelLeftClose className="w-5 h-5" />}
-            </Button>
-            <Button variant="ghost" size="icon" className="md:hidden text-zinc-400" onClick={() => setIsSidebarOpen(false)}>
-              <X className="w-5 h-5" />
-            </Button>
-          </div>
+      {/* Sidebar - Only show if there is history */}
+      {sessions.length > 0 && (
+        <motion.div
+          animate={{ width: isSidebarCollapsed ? 60 : 300 }}
+          transition={{ duration: 0.5, ease: [0.32, 0.72, 0, 1] }}
+          className={cn(
+            "fixed inset-y-0 left-0 z-50 bg-zinc-950/60 backdrop-blur-2xl border-r border-white/5 md:relative md:translate-x-0 overflow-hidden shadow-2xl",
+            isSidebarOpen ? "translate-x-0 w-[300px]" : "-translate-x-full w-[300px]",
+            "md:translate-x-0" // Reset translate for desktop
+          )}
+        >
+          <div className="flex flex-col h-full p-4">
+            <div className={cn("flex items-center mb-8", isSidebarCollapsed ? "justify-center" : "justify-between px-2")}>
+              <Button variant="ghost" size="icon" className="hidden md:flex text-zinc-400 hover:text-white" onClick={toggleSidebar}>
+                {isSidebarCollapsed ? <PanelLeftOpen className="w-5 h-5" /> : <PanelLeftClose className="w-5 h-5" />}
+              </Button>
+              <Button variant="ghost" size="icon" className="md:hidden text-zinc-400" onClick={() => setIsSidebarOpen(false)}>
+                <X className="w-5 h-5" />
+              </Button>
+            </div>
 
-          <Button
-            onClick={startNewChat}
-            className={cn("w-full bg-white/5 hover:bg-white/10 text-white border border-white/5 mb-6 group transition-all", isSidebarCollapsed ? "justify-center px-0" : "justify-start gap-2")}
-            title={t('new_chat')}
-          >
-            <Plus className="w-4 h-4 text-zinc-400 group-hover:text-white transition-colors" />
-            {!isSidebarCollapsed && t('new_chat')}
-          </Button>
-
-          <div className="flex-1 overflow-hidden">
-            {!isSidebarCollapsed && (
-              <div className="text-xs font-medium text-zinc-500 mb-3 px-2 uppercase tracking-wider">{t('history')}</div>
-            )}
-            {!isSidebarCollapsed && (
-              <ScrollArea className="h-[calc(100vh-250px)]">
-                <div className="space-y-1">
-                  {sessions.map(session => (
-                    <button
-                      key={session.id}
-                      onClick={() => loadSession(session.id)}
-                      className={cn(
-                        "w-full text-left px-3 py-2 rounded-lg text-sm transition-all group flex items-center justify-between",
-                        currentSessionId === session.id
-                          ? "bg-zinc-800 text-zinc-100"
-                          : "text-zinc-400 hover:bg-white/5 hover:text-zinc-200"
-                      )}
-                    >
-                      <span className="truncate max-w-[180px]">{session.title}</span>
-                      <Trash2
-                        className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity hover:text-red-400"
-                        onClick={(e) => deleteSession(e, session.id)}
-                      />
-                    </button>
-                  ))}
-                </div>
-              </ScrollArea>
-            )}
-            {isSidebarCollapsed && (
-              <div className="flex flex-col items-center gap-2 mt-4">
-                <Button variant="ghost" size="icon" className="text-zinc-500 hover:text-white" title="History hidden">
-                  <MessageSquare className="w-4 h-4" />
-                </Button>
-              </div>
-            )}
-          </div>
-
-          <div className="mt-auto pt-4 border-t border-white/5 space-y-2">
             <Button
-              variant="ghost"
-              className={cn("w-full justify-start gap-2 text-zinc-400 hover:text-white text-xs", isSidebarCollapsed && "justify-center px-0")}
-              onClick={() => setIsContextModalOpen(true)}
+              onClick={startNewChat}
+              className={cn(
+                "w-full mb-8 group transition-all duration-300 relative overflow-hidden backdrop-blur-md",
+                isSidebarCollapsed
+                  ? "bg-transparent hover:bg-white/5 text-white justify-center px-0"
+                  : "bg-white/5 hover:bg-white/10 text-white border border-white/10 shadow-lg justify-start gap-3"
+              )}
+              title={t('new_chat')}
             >
-              <Database className="w-4 h-4" />
-              {!isSidebarCollapsed && <span>{t('knowledge_base')}</span>}
+              <div className={cn("absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000", isSidebarCollapsed && "hidden")} />
+              <Plus className={cn("w-5 h-5 transition-transform group-hover:rotate-90 text-zinc-300 group-hover:text-white")} />
+              {!isSidebarCollapsed && <span className="font-medium tracking-wide text-zinc-200 group-hover:text-white">{t('new_chat')}</span>}
             </Button>
-            <Button variant="ghost" className={cn("w-full justify-start gap-2 text-zinc-400 hover:text-white text-xs", isSidebarCollapsed && "justify-center px-0")}>
-              <User className="w-4 h-4" />
-              {!isSidebarCollapsed && t('hire_me')}
-            </Button>
+
+            <div className="flex-1 overflow-hidden">
+              {!isSidebarCollapsed && (
+                <div className="text-xs font-medium text-zinc-500 mb-3 px-2 uppercase tracking-wider">{t('history')}</div>
+              )}
+              {!isSidebarCollapsed && (
+                <ScrollArea className="h-[calc(100vh-250px)]">
+                  <div className="space-y-1">
+                    {sessions.map(session => (
+                      <button
+                        key={session.id}
+                        onClick={() => loadSession(session.id)}
+                        className={cn(
+                          "w-full text-left px-4 py-3 rounded-xl text-sm transition-all group flex items-center justify-between relative overflow-hidden",
+                          currentSessionId === session.id
+                            ? "bg-white/10 text-white font-medium shadow-[0_0_15px_rgba(255,255,255,0.05)] border border-white/5"
+                            : "text-zinc-400 hover:bg-white/5 hover:text-zinc-200 hover:border-white/5 border border-transparent"
+                        )}
+                      >
+                        {currentSessionId === session.id && (
+                          <div className="absolute inset-0 bg-gradient-to-r from-white/5 to-transparent opacity-50" />
+                        )}
+                        <span className="truncate max-w-[180px]">{session.title}</span>
+                        <Trash2
+                          className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity hover:text-red-400"
+                          onClick={(e) => deleteSession(e, session.id)}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
+              {isSidebarCollapsed && (
+                <div className="flex flex-col items-center gap-2 mt-4">
+                  <Button variant="ghost" size="icon" className="text-zinc-500 hover:text-white" title="History hidden">
+                    <MessageSquare className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-auto pt-4 border-t border-white/5 space-y-2">
+              <Button
+                variant="ghost"
+                className={cn("w-full justify-start gap-2 text-zinc-400 hover:text-white text-xs", isSidebarCollapsed && "justify-center px-0")}
+                onClick={() => setIsContextModalOpen(true)}
+              >
+                <Database className="w-4 h-4" />
+                {!isSidebarCollapsed && <span>{t('knowledge_base')}</span>}
+              </Button>
+              <Button variant="ghost" className={cn("w-full justify-start gap-2 text-zinc-400 hover:text-white text-xs", isSidebarCollapsed && "justify-center px-0")}>
+                <User className="w-4 h-4" />
+                {!isSidebarCollapsed && t('hire_me')}
+              </Button>
+            </div>
           </div>
-        </div>
-      </motion.div>
+        </motion.div>
+      )}
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col relative w-full">
@@ -541,11 +553,13 @@ export default function Home() {
 
         {/* Header */}
         {/* Mobile Menu Trigger */}
-        <div className="absolute top-4 left-4 z-20 md:hidden">
-          <Button variant="ghost" size="icon" className="text-zinc-400 bg-black/50 backdrop-blur-sm border border-white/10" onClick={() => setIsSidebarOpen(true)}>
-            <Menu className="w-5 h-5" />
-          </Button>
-        </div>
+        {sessions.length > 0 && (
+          <div className="absolute top-4 left-4 z-20 md:hidden">
+            <Button variant="ghost" size="icon" className="text-zinc-400 bg-black/50 backdrop-blur-sm border border-white/10" onClick={() => setIsSidebarOpen(true)}>
+              <Menu className="w-5 h-5" />
+            </Button>
+          </div>
+        )}
 
         {/* Chat Area */}
         <AnimatePresence mode="wait">
@@ -604,7 +618,7 @@ export default function Home() {
                         : "px-1 text-zinc-100" // Transparent for assistant
                     )}>
                       {message.role === 'assistant' && (
-                        <div className="font-semibold text-sm text-white/90 mb-1 ml-1">F1 AI</div>
+                        <div className="font-semibold text-sm text-white/90 mb-1 ml-1">Senna AI</div>
                       )}
 
                       <div className="prose prose-invert prose-p:leading-relaxed prose-pre:bg-zinc-900 prose-pre:p-4 prose-pre:rounded-lg max-w-none text-[0.95rem]">
@@ -732,7 +746,7 @@ export default function Home() {
               </div>
             </OrganicBorder>
             <div className="text-center mt-3 text-xs text-zinc-500 font-medium flex items-center justify-center gap-2">
-              <span>F1 AI can make mistakes. Check important information.</span>
+              <span>Senna AI can make mistakes. Check important information.</span>
               <a href="https://devleor.io" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-2 py-0.5 rounded border border-white/10 transition-colors">
                 {t('hire_me')}
               </a>

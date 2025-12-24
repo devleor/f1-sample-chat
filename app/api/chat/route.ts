@@ -3,14 +3,34 @@ import { DataAPIClient } from "@datastax/astra-db-ts";
 import { HfInference } from "@huggingface/inference";
 import redis from "@/lib/redis";
 import { traceable } from "langsmith/traceable";
-import { pull } from "langchain/hub";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
+import dotenv from "dotenv";
+import path from "path";
+
+// Force load env vars with explicit path and debug logging
+const envPath = path.resolve(process.cwd(), '.env');
+console.log("DEBUG: Loading env from:", envPath);
+const result = dotenv.config({ path: envPath });
+if (result.error) console.error("DEBUG: Error loading .env:", result.error);
+
+// Log relevant keys to debug
+const relevantKeys = Object.keys(process.env).filter(k => k.includes('LANG') || k.includes('PROJECT'));
+console.log("DEBUG: All Env Keys (LANG/PROJECT):", relevantKeys);
+relevantKeys.forEach(k => {
+  const val = process.env[k] || "";
+  // Mask sensitive parts
+  const display = k.includes("KEY") ? val.substring(0, 5) + "..." : val;
+  console.log(`DEBUG: ${k} = ${display}`);
+});
 
 const hf = new HfInference(process.env.HUGGINGFACE_API_KEY);
 
 // Traceable wrapper for HF generation
 const generateResponse = traceable(async (messages: any[], systemPrompt: string) => {
-  let fullResponse = "";
+  // DEBUG: Check vars inside request
+  const pName = process.env.LANGCHAIN_PROJECT || process.env.LANGSMITH_PROJECT || "default";
+  console.log("DEBUG: Inside Traceable - Resolved Project Name:", pName);
+
   const responseStream = hf.chatCompletionStream({
     model: "Qwen/Qwen2.5-72B-Instruct",
     messages: [
@@ -22,7 +42,10 @@ const generateResponse = traceable(async (messages: any[], systemPrompt: string)
   });
 
   return responseStream;
-}, { name: "generate_response" });
+}, {
+  name: "generate_response",
+  project_name: process.env.LANGCHAIN_PROJECT || process.env.LANGSMITH_PROJECT
+});
 
 // Astra DB setup
 const client = new DataAPIClient(process.env.ASTRA_DB_APPLICATION_TOKEN);
@@ -91,18 +114,7 @@ QUESTION: ${lastMessage.content}
 ----------------
 `;
 
-    // Attempt to pull from LangSmith Hub
-    try {
-      // Assumes a prompt named 'f1-chat-system' exists or falls back to local
-      // Note: For this to work, the user must push a prompt with this name to their repository
-      // or we use a widely available one. Since we just added the key, likely it doesn't exist yet.
-      // We will stick to the local one if this fails.
-      // const pulledPrompt = await pull<ChatPromptTemplate>("f1-chat-system");
-      // systemPrompt = await pulledPrompt.format({ context, userLanguage, question: lastMessage.content });
-      // Uncomment above if/when a prompt is pushed to the hub
-    } catch (e) {
-      console.warn("Failed to pull prompt from Hub, using default.", e);
-    }
+    // Local System Prompt is used directly.
 
     // 5. Generate response with Hugging Face (Streaming)
     const stream = new ReadableStream({
