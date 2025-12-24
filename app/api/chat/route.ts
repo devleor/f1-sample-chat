@@ -15,7 +15,7 @@ const db = client.db(process.env.ASTRA_DB_API_ENDPOINT, {
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages, sessionId } = await req.json();
+    const { messages, sessionId, userLanguage } = await req.json();
     const lastMessage = messages[messages.length - 1];
 
     if (sessionId) {
@@ -57,6 +57,14 @@ existing knowledge and don't mention the source of your information or
 what the context does or doesn't include.
 Format responses using markdown where applicable and don't return
 images.
+
+USER LANGUAGE INFO:
+The user's browser language is: ${userLanguage || 'Unknown'}.
+IMPORTANT: Detect the language of the user's input message. 
+- If the user writes in a specific language, RESPOND IN THAT LANGUAGE.
+- If the input is ambiguous, default to the browser language (${userLanguage || 'English'}).
+- Main rule: Always match the user's language.
+
 ----------------
 START CONTEXT
 ${context}

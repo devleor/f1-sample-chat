@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { Send, User, Image as ImageIcon, Video, Pencil, MessageSquare, Plus, Menu, Trash2, X, Copy, ThumbsUp, ThumbsDown, RotateCw, MoreHorizontal, ChevronDown, Database, Globe, Layers, Cpu, Workflow, Bot } from "lucide-react"
+import { Send, User, Image as ImageIcon, Video, Pencil, MessageSquare, Plus, Menu, Trash2, X, Copy, ThumbsUp, ThumbsDown, RotateCw, MoreHorizontal, ChevronDown, Database, Globe, Layers, Cpu, Workflow, Bot, Loader2 } from "lucide-react"
 import Image from "next/image"
 import sennaLogo from "./assets/senna.png"
 import { SplashLogo } from "@/components/SplashLogo"
@@ -13,6 +13,8 @@ import { cn } from "@/lib/utils"
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { motion, AnimatePresence } from "framer-motion"
+import LiquidGradient from "@/components/LiquidGradient"
+import { OrganicBorder } from "@/components/OrganicBorder"
 
 // --- Types ---
 
@@ -39,6 +41,7 @@ export default function Home() {
   const [input, setInput] = React.useState('')
   const [isLoading, setIsLoading] = React.useState(false)
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false) // Mobile/Desktop toggle
+  const [userLanguage, setUserLanguage] = React.useState<string>('en-US')
 
   // Context / Knowledge Base State
   const [isContextModalOpen, setIsContextModalOpen] = React.useState(false)
@@ -89,6 +92,13 @@ export default function Home() {
       } catch (e) {
         console.error("Failed to load history", e)
       }
+    }
+  }, [])
+
+  // Detect Language
+  React.useEffect(() => {
+    if (typeof navigator !== 'undefined') {
+      setUserLanguage(navigator.language)
     }
   }, [])
 
@@ -205,6 +215,7 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sessionId,
+          userLanguage, // Send detected language
           messages: currentSessionMessages.map(m => ({
             role: m.role,
             content: m.content
@@ -420,8 +431,9 @@ export default function Home() {
               <div className="space-y-6 pb-32 max-w-3xl mx-auto">
                 {displayMessages.map((message) => (
                   <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    layout // Added for fluid reordering/resizing
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
                     key={message.id}
                     className={cn(
                       "flex w-full gap-4",
@@ -518,35 +530,37 @@ export default function Home() {
             )}
 
             {/* Input Bar */}
-            <div className="bg-zinc-800/40 backdrop-blur-xl border border-white/10 rounded-[2rem] p-1.5 focus-within:bg-zinc-800/60 focus-within:border-white/20 transition-all shadow-2xl flex items-center gap-2">
-              <div className="p-2">
-                <Plus className="w-6 h-6 text-zinc-400 cursor-pointer hover:text-white transition-colors" /> {/* Apple-style attachment icon */}
+            <OrganicBorder>
+              <div className="bg-zinc-800/40 backdrop-blur-xl border border-white/10 rounded-[2rem] p-1.5 focus-within:bg-zinc-800/60 focus-within:border-white/20 transition-all shadow-2xl flex items-center gap-2">
+                <div className="p-2">
+                  <Plus className="w-6 h-6 text-zinc-400 cursor-pointer hover:text-white transition-colors" /> {/* Apple-style attachment icon */}
+                </div>
+                <Input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault()
+                      sendMessage()
+                    }
+                  }}
+                  placeholder="Message ChatBot..."
+                  className="flex-1 bg-transparent border-0 focus-visible:ring-0 text-white placeholder:text-zinc-500 text-[1rem] h-12 px-2 shadow-none"
+                  disabled={isLoading}
+                />
+                <Button
+                  onClick={() => sendMessage()}
+                  disabled={isLoading || !input.trim()}
+                  size="icon"
+                  className={cn(
+                    "rounded-full w-10 h-10 transition-all duration-300",
+                    input.trim() ? "bg-white hover:bg-zinc-200 text-black scale-100" : "bg-zinc-800 text-zinc-500 scale-90 opacity-0 md:opacity-100"
+                  )}
+                >
+                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4 ml-0.5" />}
+                </Button>
               </div>
-              <Input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault()
-                    sendMessage()
-                  }
-                }}
-                placeholder="Message ChatBot..."
-                className="flex-1 bg-transparent border-0 focus-visible:ring-0 text-white placeholder:text-zinc-500 text-[1rem] h-12 px-2 shadow-none"
-                disabled={isLoading}
-              />
-              <Button
-                onClick={() => sendMessage()}
-                disabled={isLoading || !input.trim()}
-                size="icon"
-                className={cn(
-                  "rounded-full w-10 h-10 transition-all duration-300",
-                  input.trim() ? "bg-white hover:bg-zinc-200 text-black scale-100" : "bg-zinc-800 text-zinc-500 scale-90 opacity-0 md:opacity-100"
-                )}
-              >
-                <Send className="w-4 h-4 ml-0.5" />
-              </Button>
-            </div>
+            </OrganicBorder>
             <div className="text-center mt-3 text-xs text-zinc-500 font-medium flex items-center justify-center gap-2">
               <span>F1 AI can make mistakes. Check important information.</span>
               <a href="https://devleor.io" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-2 py-0.5 rounded border border-white/10 transition-colors">
