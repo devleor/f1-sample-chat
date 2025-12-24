@@ -2,7 +2,7 @@
 
 import * as React from "react"
 
-export function OrganicBorder({ children, className }: { children: React.ReactNode; className?: string }) {
+export function OrganicBorder({ children, className, isPaused = false }: { children: React.ReactNode; className?: string; isPaused?: boolean }) {
     const containerRef = React.useRef<HTMLDivElement>(null)
     const patternRef = React.useRef<HTMLSpanElement>(null)
     const [dimensions, setDimensions] = React.useState({ width: 0, height: 0 })
@@ -29,6 +29,17 @@ export function OrganicBorder({ children, className }: { children: React.ReactNo
         return () => observer.disconnect()
     }, [])
 
+    const svgRef = React.useRef<SVGSVGElement>(null)
+
+    React.useEffect(() => {
+        if (!svgRef.current) return
+        if (isPaused) {
+            svgRef.current.pauseAnimations()
+        } else {
+            svgRef.current.unpauseAnimations()
+        }
+    }, [isPaused])
+
     // Calculate rounded rect path
     const r = 32 // Radius matching rounded-[2rem]
     const w = dimensions.width
@@ -44,6 +55,7 @@ export function OrganicBorder({ children, className }: { children: React.ReactNo
 
             {/* Rotating Text SVG Overlay */}
             <svg
+                ref={svgRef}
                 className="absolute -inset-[20px] w-[calc(100%+40px)] h-[calc(100%+40px)] pointer-events-none z-0"
                 xmlns="http://www.w3.org/2000/svg"
             >

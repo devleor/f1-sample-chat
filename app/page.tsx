@@ -53,6 +53,7 @@ export default function Home() {
   const [feedback, setFeedback] = React.useState<Record<string, 'up' | 'down' | null>>({})
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false)
   const [showSplash, setShowSplash] = React.useState(true) // Restoring Splash Screen
+  const [isInputPaused, setIsInputPaused] = React.useState(false)
   const { t } = useTranslation()
 
   // Context / Knowledge Base State
@@ -695,7 +696,7 @@ export default function Home() {
             )}
 
             {/* Input Bar */}
-            <OrganicBorder>
+            <OrganicBorder isPaused={isInputPaused}>
               <div className="bg-zinc-800/40 backdrop-blur-xl border border-white/10 rounded-[2rem] p-1.5 focus-within:bg-zinc-800/60 focus-within:border-white/20 transition-all shadow-2xl flex items-center gap-2">
                 <div className="p-2">
                   <Plus className="w-6 h-6 text-zinc-400 cursor-pointer hover:text-white transition-colors" /> {/* Apple-style attachment icon */}
@@ -703,10 +704,14 @@ export default function Home() {
                 <Input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
+                  onFocus={() => setIsInputPaused(true)}
+                  onBlur={() => setIsInputPaused(false)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault()
+                      if (!input.trim()) return
                       sendMessage()
+                      setIsInputPaused(false)
                     }
                   }}
                   placeholder={t('enter_message')}
