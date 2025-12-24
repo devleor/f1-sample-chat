@@ -2,10 +2,27 @@ import { NextRequest, NextResponse } from "next/server";
 import { DataAPIClient } from "@datastax/astra-db-ts";
 import { HfInference } from "@huggingface/inference";
 import redis from "@/lib/redis";
-
-
+import { traceable } from "langsmith/traceable";
+import { pull } from "langchain/hub";
+import { ChatPromptTemplate } from "@langchain/core/prompts";
 
 const hf = new HfInference(process.env.HUGGINGFACE_API_KEY);
+
+// Traceable wrapper for HF generation
+const generateResponse = traceable(async (messages: any[], systemPrompt: string) => {
+  let fullResponse = "";
+  const responseStream = hf.chatCompletionStream({
+    model: "Qwen/Qwen2.5-72B-Instruct",
+    messages: [
+      { role: "system", content: systemPrompt },
+      ...messages
+    ],
+    temperature: 0.7,
+    max_tokens: 4000,
+  });
+
+  return responseStream;
+}, { name: "generate_response" });
 
 // Astra DB setup
 const client = new DataAPIClient(process.env.ASTRA_DB_APPLICATION_TOKEN);
@@ -48,7 +65,7 @@ export async function POST(req: NextRequest) {
 
 
     // 4. Create enhanced system prompt with F1 context
-    const systemPrompt = `You are an AI assistant who knows everything about Formula One.
+    let systemPrompt = `You are an AI assistant who knows everything about Formula One.
 Use the below context to augment what you know about Formula One racing.
 The context will provide you with the most recent page data from wikipedia,
 the official F1 website and others.
@@ -74,23 +91,28 @@ QUESTION: ${lastMessage.content}
 ----------------
 `;
 
+    // Attempt to pull from LangSmith Hub
+    try {
+      // Assumes a prompt named 'f1-chat-system' exists or falls back to local
+      // Note: For this to work, the user must push a prompt with this name to their repository
+      // or we use a widely available one. Since we just added the key, likely it doesn't exist yet.
+      // We will stick to the local one if this fails.
+      // const pulledPrompt = await pull<ChatPromptTemplate>("f1-chat-system");
+      // systemPrompt = await pulledPrompt.format({ context, userLanguage, question: lastMessage.content });
+      // Uncomment above if/when a prompt is pushed to the hub
+    } catch (e) {
+      console.warn("Failed to pull prompt from Hub, using default.", e);
+    }
+
     // 5. Generate response with Hugging Face (Streaming)
     const stream = new ReadableStream({
       async start(controller) {
         let fullResponse = "";
         try {
-          for await (const chunk of hf.chatCompletionStream({
-            model: "Qwen/Qwen2.5-72B-Instruct",
-            messages: [
-              {
-                role: "system",
-                content: systemPrompt
-              },
-              ...messages
-            ],
-            temperature: 0.7,
-            max_tokens: 4000,
-          })) {
+          // Use the traceable wrapper
+          const responseStream = await generateResponse(messages, systemPrompt);
+
+          for await (const chunk of responseStream) {
             const content = chunk.choices[0]?.delta?.content || "";
             if (content) {
               fullResponse += content;

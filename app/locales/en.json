@@ -1,0 +1,16 @@
+{
+    "new_chat": "New Chat",
+    "history": "History",
+    "enter_message": "Ask about Formula 1...",
+    "splash_title": "F1 Intelligence",
+    "splash_subtitle": "Real-time insights powered by",
+    "splash_cta": "Start Analysis",
+    "knowledge_base": "F1 Knowledge Base",
+    "orchestration": "Orchestration & RAG",
+    "inference": "Inference (Qwen 2.5)",
+    "scraping": "Web Scraping",
+    "close": "Close",
+    "hire_me": "Hire me",
+    "send": "Send",
+    "loading": "Loading..."
+}

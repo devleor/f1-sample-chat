@@ -1,0 +1,16 @@
+{
+    "new_chat": "Nova Conversa",
+    "history": "Histórico",
+    "enter_message": "Pergunte sobre Fórmula 1...",
+    "splash_title": "Senna IA",
+    "splash_subtitle": "Insights de F1 em tempo real",
+    "splash_cta": "Iniciar Análise",
+    "knowledge_base": "Base de Conhecimento F1",
+    "orchestration": "Orquestração & RAG",
+    "inference": "Inferência (Qwen 2.5)",
+    "scraping": "Web Scraping",
+    "close": "Fechar",
+    "hire_me": "Contrate-me",
+    "send": "Enviar",
+    "loading": "Carregando..."
+}

@@ -15,6 +15,8 @@ import remarkGfm from 'remark-gfm'
 import { motion, AnimatePresence } from "framer-motion"
 import LiquidGradient from "@/components/LiquidGradient"
 import { OrganicBorder } from "@/components/OrganicBorder"
+import { useTranslation } from "@/hooks/useTranslation"
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react"
 
 // --- Types ---
 
@@ -34,6 +36,12 @@ interface ChatSession {
 
 // --- Main Component ---
 
+const sourceUrls = [
+  "https://www.formula1.com/en/latest.html",
+  "https://www.autosport.com/f1/news",
+  "https://www.motorsport.com/f1/news"
+]
+
 export default function Home() {
   // State
   const [sessions, setSessions] = React.useState<ChatSession[]>([])
@@ -42,10 +50,126 @@ export default function Home() {
   const [isLoading, setIsLoading] = React.useState(false)
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false) // Mobile/Desktop toggle
   const [userLanguage, setUserLanguage] = React.useState<string>('en-US')
+  const [feedback, setFeedback] = React.useState<Record<string, 'up' | 'down' | null>>({})
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false)
+  const [showSplash, setShowSplash] = React.useState(true) // Restoring Splash Screen
+  const { t } = useTranslation()
 
   // Context / Knowledge Base State
   const [isContextModalOpen, setIsContextModalOpen] = React.useState(false)
-  const [showSplash, setShowSplash] = React.useState(true) // Start with Splash
+
+  // Feedback Handlers
+  const handleFeedback = (messageId: string, type: 'up' | 'down') => {
+    setFeedback(prev => ({
+      ...prev,
+      [messageId]: prev[messageId] === type ? null : type // Toggle
+    }))
+  }
+
+  const regenerateResponse = async (messageId: string) => {
+    if (isLoading || !currentSessionId) return
+
+    // Find the session and messages
+    const session = sessions.find(s => s.id === currentSessionId)
+    if (!session) return
+
+    // Filter out the message to be regenerated (and any potential subsequent ones, though there shouldn't be any if it's the last)
+    // We assume we are regenerating the *last* assistant message.
+    const messageIndex = session.messages.findIndex(m => m.id === messageId)
+    if (messageIndex === -1) return
+
+    // New history is everything BEFORE this message
+    const historyToUse = session.messages.slice(0, messageIndex)
+
+    // Verify the last message in history is a USER message
+    if (historyToUse.length === 0 || historyToUse[historyToUse.length - 1].role !== 'user') {
+      // Cannot regenerate without a user prompt
+      return
+    }
+
+    // Optimistically update UI to remove the old message
+    setSessions(prev => prev.map(s => {
+      if (s.id === currentSessionId) {
+        return { ...s, messages: historyToUse }
+      }
+      return s
+    }))
+
+    setIsLoading(true)
+
+    // Reuse stream logic (Standardize this if possible, but for now implementing directly)
+    const assistantMsgId = (Date.now()).toString()
+    const assistantMessagePlaceholder: Message = {
+      id: assistantMsgId,
+      role: 'assistant',
+      content: '',
+      timestamp: new Date()
+    }
+
+    // Add placeholder
+    setSessions(prev => prev.map(s => {
+      if (s.id === currentSessionId) {
+        return { ...s, messages: [...historyToUse, assistantMessagePlaceholder] }
+      }
+      return s
+    }))
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: currentSessionId,
+          userLanguage,
+          messages: historyToUse.map(m => ({
+            role: m.role,
+            content: m.content
+          }))
+        }),
+      })
+
+      if (!response.ok) throw new Error(response.statusText)
+
+      const reader = response.body?.getReader()
+      if (!reader) throw new Error("No reader available")
+
+      const decoder = new TextDecoder()
+      let accumulatedContent = ""
+      let isFirstChunk = true
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        if (isFirstChunk) {
+          setIsLoading(false)
+          isFirstChunk = false
+        }
+
+        const text = decoder.decode(value, { stream: true })
+        accumulatedContent += text
+
+        setSessions(prev => prev.map(s => {
+          if (s.id === currentSessionId) {
+            return {
+              ...s,
+              messages: s.messages.map(m =>
+                m.id === assistantMsgId
+                  ? { ...m, content: accumulatedContent }
+                  : m
+              )
+            }
+          }
+          return s
+        }))
+      }
+    } catch (error) {
+      console.error("Regeneration error:", error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const [sourceUrls] = React.useState([
     'https://en.wikipedia.org/wiki/2024_Formula_One_World_Championship',
     'https://en.wikipedia.org/wiki/2025_Formula_One_World_Championship',
@@ -124,6 +248,8 @@ export default function Home() {
     setInput('')
     setIsSidebarOpen(false) // Close sidebar on mobile
   }
+
+  const toggleSidebar = () => setIsSidebarCollapsed(!isSidebarCollapsed)
 
   const deleteSession = (e: React.MouseEvent, id: string) => {
     e.stopPropagation()
@@ -307,99 +433,117 @@ export default function Home() {
   ]
 
   return (
-    <div className="flex h-screen w-full bg-black text-white font-sans overflow-hidden">
-      {/* Splash Screen Animation */}
-      {showSplash && <SplashLogo onComplete={() => setShowSplash(false)} />}
+    <div className="flex h-screen w-full bg-black text-white font-sans overflow-hidden selection:bg-zinc-700/30">
 
-      {/* --- Sidebar (History) --- */}
+      {/* Mobile Sidebar Overlay */}
+      <AnimatePresence>
+        {isSidebarOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsSidebarOpen(false)}
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 md:hidden"
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Sidebar */}
       <motion.div
+        animate={{ width: isSidebarCollapsed ? 60 : 260 }}
+        transition={{ duration: 0.5, ease: "easeInOut" }}
         className={cn(
-          "hidden md:flex fixed md:relative z-20 h-full bg-zinc-900/50 backdrop-blur-xl border-r border-white/10 w-[280px] flex-col transition-all duration-300 transform",
-          isSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0 md:w-[280px] w-0"
+          "fixed inset-y-0 left-0 z-50 bg-black md:relative md:translate-x-0 overflow-hidden",
+          isSidebarOpen ? "translate-x-0 w-[260px]" : "-translate-x-full w-[260px]",
+          "md:translate-x-0" // Reset translate for desktop
         )}
       >
-        <div className="p-4 flex items-center justify-between border-b border-white/5">
-          <button onClick={startNewChat} className="flex items-center gap-2 text-sm font-medium text-white/90 hover:text-white transition-colors bg-white/10 px-3 py-2 rounded-lg w-full">
-            <Plus className="w-4 h-4" />
-            New Chat
-          </button>
-          <button onClick={() => setIsSidebarOpen(false)} className="md:hidden p-2 text-zinc-400">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+        <div className="flex flex-col h-full p-4">
+          <div className={cn("flex items-center mb-8", isSidebarCollapsed ? "justify-center" : "justify-between px-2")}>
+            <Button variant="ghost" size="icon" className="hidden md:flex text-zinc-400 hover:text-white" onClick={toggleSidebar}>
+              {isSidebarCollapsed ? <PanelLeftOpen className="w-5 h-5" /> : <PanelLeftClose className="w-5 h-5" />}
+            </Button>
+            <Button variant="ghost" size="icon" className="md:hidden text-zinc-400" onClick={() => setIsSidebarOpen(false)}>
+              <X className="w-5 h-5" />
+            </Button>
+          </div>
 
-        <ScrollArea className="flex-1 p-2">
-          <div className="space-y-1">
-            <div className="px-2 py-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider">History</div>
-            <AnimatePresence>
-              {sessions.map(session => (
-                <motion.button
-                  key={session.id}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -10 }}
-                  transition={{ duration: 0.2 }}
-                  onClick={() => loadSession(session.id)}
-                  className={cn(
-                    "group flex items-center justify-between w-full text-left px-3 py-3 rounded-xl text-sm transition-all relative overflow-hidden",
-                    currentSessionId === session.id
-                      ? "bg-blue-500/20 text-blue-100"
-                      : "text-zinc-400 hover:bg-white/5 hover:text-zinc-200"
-                  )}
-                >
-                  <div className="flex items-center gap-3 overflow-hidden">
-                    <MessageSquare className="w-4 h-4 flex-shrink-0" />
-                    <span className="truncate">{session.title}</span>
-                  </div>
-                  <div
-                    onClick={(e) => deleteSession(e, session.id)}
-                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-white/20 rounded-md transition-all absolute right-2"
-                  >
-                    <Trash2 className="w-3 h-3 text-red-400" />
-                  </div>
-                </motion.button>
-              ))}
-            </AnimatePresence>
-            {sessions.length === 0 && (
-              <div className="px-4 py-8 text-center text-sm text-zinc-600">
-                No history yet. Start a chat!
+          <Button
+            onClick={startNewChat}
+            className={cn("w-full bg-white/5 hover:bg-white/10 text-white border border-white/5 mb-6 group transition-all", isSidebarCollapsed ? "justify-center px-0" : "justify-start gap-2")}
+            title={t('new_chat')}
+          >
+            <Plus className="w-4 h-4 text-zinc-400 group-hover:text-white transition-colors" />
+            {!isSidebarCollapsed && t('new_chat')}
+          </Button>
+
+          <div className="flex-1 overflow-hidden">
+            {!isSidebarCollapsed && (
+              <div className="text-xs font-medium text-zinc-500 mb-3 px-2 uppercase tracking-wider">{t('history')}</div>
+            )}
+            {!isSidebarCollapsed && (
+              <ScrollArea className="h-[calc(100vh-250px)]">
+                <div className="space-y-1">
+                  {sessions.map(session => (
+                    <button
+                      key={session.id}
+                      onClick={() => loadSession(session.id)}
+                      className={cn(
+                        "w-full text-left px-3 py-2 rounded-lg text-sm transition-all group flex items-center justify-between",
+                        currentSessionId === session.id
+                          ? "bg-zinc-800 text-zinc-100"
+                          : "text-zinc-400 hover:bg-white/5 hover:text-zinc-200"
+                      )}
+                    >
+                      <span className="truncate max-w-[180px]">{session.title}</span>
+                      <Trash2
+                        className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity hover:text-red-400"
+                        onClick={(e) => deleteSession(e, session.id)}
+                      />
+                    </button>
+                  ))}
+                </div>
+              </ScrollArea>
+            )}
+            {isSidebarCollapsed && (
+              <div className="flex flex-col items-center gap-2 mt-4">
+                <Button variant="ghost" size="icon" className="text-zinc-500 hover:text-white" title="History hidden">
+                  <MessageSquare className="w-4 h-4" />
+                </Button>
               </div>
             )}
-
           </div>
-        </ScrollArea>
 
-        {/* Context Button */}
-        <div className="p-4 border-t border-white/5 hidden md:block">
-          <button
-            onClick={() => setIsContextModalOpen(true)}
-            className="flex items-center gap-2 w-full px-3 py-2 text-sm text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
-          >
-            <Database className="w-4 h-4" />
-            <span>Knowledge Base</span>
-          </button>
+          <div className="mt-auto pt-4 border-t border-white/5 space-y-2">
+            <Button
+              variant="ghost"
+              className={cn("w-full justify-start gap-2 text-zinc-400 hover:text-white text-xs", isSidebarCollapsed && "justify-center px-0")}
+              onClick={() => setIsContextModalOpen(true)}
+            >
+              <Database className="w-4 h-4" />
+              {!isSidebarCollapsed && <span>{t('knowledge_base')}</span>}
+            </Button>
+            <Button variant="ghost" className={cn("w-full justify-start gap-2 text-zinc-400 hover:text-white text-xs", isSidebarCollapsed && "justify-center px-0")}>
+              <User className="w-4 h-4" />
+              {!isSidebarCollapsed && t('hire_me')}
+            </Button>
+          </div>
         </div>
       </motion.div>
 
-      {/* --- Main Content --- */}
-      <div className="flex-1 flex flex-col h-full relative bg-gradient-to-br from-black via-zinc-950 to-zinc-900">
-
-        {/* Desktop Header / Model Selector */}
-        <div className="hidden md:flex items-center p-4 absolute top-0 left-0 z-30">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-zinc-800/50 cursor-pointer transition-colors text-zinc-300 hover:text-white">
-            <span className="text-lg font-semibold text-white/90">F1 2025</span>
-            <ChevronDown className="w-4 h-4 opacity-50" />
-          </div>
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col relative w-full">
+        {/* Dynamic Background */}
+        <div className="absolute inset-0 z-0 pointer-events-none opacity-40">
+          <LiquidGradient />
         </div>
 
-        {/* Mobile Header */}
-        <div className="md:hidden flex items-center justify-between p-4 border-b border-white/5 bg-black/50 backdrop-blur-md sticky top-0 z-30">
-          <div className="w-6" /> {/* Spacer for centering if needed, or just remove menu button */}
-          <div className="flex items-center gap-1">
-            <span className="font-semibold text-sm">F1 2025</span>
-            <ChevronDown className="w-3 h-3 opacity-50" />
-          </div>
-          <div className="w-8" />
+        {/* Header */}
+        {/* Mobile Menu Trigger */}
+        <div className="absolute top-4 left-4 z-20 md:hidden">
+          <Button variant="ghost" size="icon" className="text-zinc-400 bg-black/50 backdrop-blur-sm border border-white/10" onClick={() => setIsSidebarOpen(true)}>
+            <Menu className="w-5 h-5" />
+          </Button>
         </div>
 
         {/* Chat Area */}
@@ -418,10 +562,10 @@ export default function Home() {
                   <Image src={sennaLogo} alt="Senna Logo" className="w-full h-full object-cover" />
                 </div>
                 <h1 className="text-4xl font-semibold tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-white to-white/60">
-                  Hello, Driver
+                  {t('splash_title')}
                 </h1>
                 <div className="text-zinc-400/80 text-lg">
-                  How can I help you today?
+                  {t('splash_subtitle')}
                 </div>
               </div>
             </motion.div>
@@ -431,7 +575,6 @@ export default function Home() {
               <div className="space-y-6 pb-32 max-w-3xl mx-auto">
                 {displayMessages.map((message) => (
                   <motion.div
-                    layout // Added for fluid reordering/resizing
                     initial={{ opacity: 0, y: 10, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     key={message.id}
@@ -479,13 +622,35 @@ export default function Home() {
                           <Button onClick={() => copyToClipboard(message.content)} variant="ghost" size="icon" className="h-8 w-8 rounded-md text-zinc-500 hover:text-zinc-300 hover:bg-white/5">
                             <Copy className="w-4 h-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-md text-zinc-500 hover:text-zinc-300 hover:bg-white/5">
+                          <Button
+                            onClick={() => handleFeedback(message.id, 'up')}
+                            variant="ghost"
+                            size="icon"
+                            className={cn(
+                              "h-8 w-8 rounded-md text-zinc-500 hover:text-zinc-300 hover:bg-white/5 transition-colors",
+                              feedback[message.id] === 'up' && "text-green-400 hover:text-green-300"
+                            )}
+                          >
                             <ThumbsUp className="w-4 h-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-md text-zinc-500 hover:text-zinc-300 hover:bg-white/5">
+                          <Button
+                            onClick={() => handleFeedback(message.id, 'down')}
+                            variant="ghost"
+                            size="icon"
+                            className={cn(
+                              "h-8 w-8 rounded-md text-zinc-500 hover:text-zinc-300 hover:bg-white/5 transition-colors",
+                              feedback[message.id] === 'down' && "text-red-400 hover:text-red-300"
+                            )}
+                          >
                             <ThumbsDown className="w-4 h-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-md text-zinc-500 hover:text-zinc-300 hover:bg-white/5">
+                          <Button
+                            onClick={() => regenerateResponse(message.id)}
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 rounded-md text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
+                            title="Regenerate"
+                          >
                             <RotateCw className="w-4 h-4" />
                           </Button>
                           <Button variant="ghost" size="icon" className="h-8 w-8 rounded-md text-zinc-500 hover:text-zinc-300 hover:bg-white/5">
@@ -544,7 +709,7 @@ export default function Home() {
                       sendMessage()
                     }
                   }}
-                  placeholder="Message ChatBot..."
+                  placeholder={t('enter_message')}
                   className="flex-1 bg-transparent border-0 focus-visible:ring-0 text-white placeholder:text-zinc-500 text-[1rem] h-12 px-2 shadow-none"
                   disabled={isLoading}
                 />
@@ -564,7 +729,7 @@ export default function Home() {
             <div className="text-center mt-3 text-xs text-zinc-500 font-medium flex items-center justify-center gap-2">
               <span>F1 AI can make mistakes. Check important information.</span>
               <a href="https://devleor.io" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-2 py-0.5 rounded border border-white/10 transition-colors">
-                Hire me
+                {t('hire_me')}
               </a>
             </div>
           </div>
@@ -588,7 +753,7 @@ export default function Home() {
                   <div className="flex items-center justify-between mb-6">
                     <h2 className="text-xl font-semibold flex items-center gap-2 text-white">
                       <Database className="w-6 h-6 text-blue-500" />
-                      System Knowledge
+                      {t('knowledge_base')}
                     </h2>
                     <button onClick={() => setIsContextModalOpen(false)} className="text-zinc-500 hover:text-white">
                       <X className="w-5 h-5" />
@@ -639,7 +804,7 @@ export default function Home() {
                           </div>
                           <div>
                             <div className="text-sm font-medium text-white">LangChain</div>
-                            <div className="text-xs text-zinc-500">Orchestration & RAG</div>
+                            <div className="text-xs text-zinc-500">{t('orchestration')}</div>
                           </div>
                         </div>
 
@@ -649,7 +814,7 @@ export default function Home() {
                           </div>
                           <div>
                             <div className="text-sm font-medium text-white">Hugging Face</div>
-                            <div className="text-xs text-zinc-500">Inference (Qwen 2.5)</div>
+                            <div className="text-xs text-zinc-500">{t('inference')}</div>
                           </div>
                         </div>
 
@@ -659,7 +824,7 @@ export default function Home() {
                           </div>
                           <div>
                             <div className="text-sm font-medium text-white">Puppeteer</div>
-                            <div className="text-xs text-zinc-500">Web Scraping</div>
+                            <div className="text-xs text-zinc-500">{t('scraping')}</div>
                           </div>
                         </div>
                       </div>
@@ -668,7 +833,7 @@ export default function Home() {
 
                   <div className="mt-8 pt-4 border-t border-white/5 flex justify-end">
                     <Button onClick={() => setIsContextModalOpen(false)} className="bg-white text-black hover:bg-zinc-200">
-                      Close
+                      {t('close')}
                     </Button>
                   </div>
                 </div>
@@ -676,6 +841,7 @@ export default function Home() {
             </div>
           )}
         </AnimatePresence>
+        {showSplash && <SplashLogo onComplete={() => setShowSplash(false)} />}
       </div>
     </div>
   )
