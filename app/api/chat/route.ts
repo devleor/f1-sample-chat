@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
 
     // 1. Generate embedding for user question
     const questionEmbedding = await hf.featureExtraction({
-      model: "sentence-transformers/all-MiniLM-L6-v2",
+      model: "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
       inputs: lastMessage.content
     });
     console.log("1. Embedding generated");
@@ -78,6 +78,7 @@ export async function POST(req: NextRequest) {
       includeSimilarity: true
     }).toArray();
     console.log(`2. Vector search complete. Found ${searchResults.length} documents.`);
+    searchResults.forEach((doc, i) => console.log(`   [Doc ${i}]: ${doc.text.substring(0, 100)}...`));
 
     // 3. Build context from search results
     const context = searchResults.map(doc => doc.text).join('\n\n');
