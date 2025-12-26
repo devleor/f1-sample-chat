@@ -26,7 +26,7 @@ const hf = new HfInference(process.env.HUGGINGFACE_API_KEY);
 // Direct HF generation (LangChain Removed)
 const generateResponse = async (messages: any[], systemPrompt: string) => {
   const responseStream = hf.chatCompletionStream({
-    model: "Qwen/Qwen2.5-72B-Instruct",
+    model: "Qwen/Qwen2.5-7B-Instruct",
     messages: [
       { role: "system", content: systemPrompt },
       ...messages
@@ -49,6 +49,10 @@ export async function POST(req: NextRequest) {
     const { messages, sessionId, userLanguage } = await req.json();
     const lastMessage = messages[messages.length - 1];
 
+    console.log("---- CHAT REQUEST STARTED ----");
+    console.log("Session ID:", sessionId);
+    console.log("User Message:", lastMessage.content?.substring(0, 50) + "...");
+
     if (sessionId) {
       await redis.rpush(`chat:${sessionId}`, JSON.stringify(lastMessage));
       await redis.expire(`chat:${sessionId}`, 86400); // 24 hours TTL
@@ -59,6 +63,7 @@ export async function POST(req: NextRequest) {
       model: "sentence-transformers/all-MiniLM-L6-v2",
       inputs: lastMessage.content
     });
+    console.log("1. Embedding generated");
 
     // Ensure vector is properly typed as number array
     const vector: number[] = Array.isArray(questionEmbedding)
@@ -72,6 +77,7 @@ export async function POST(req: NextRequest) {
       limit: 3,
       includeSimilarity: true
     }).toArray();
+    console.log(`2. Vector search complete. Found ${searchResults.length} documents.`);
 
     // 3. Build context from search results
     const context = searchResults.map(doc => doc.text).join('\n\n');
@@ -110,13 +116,15 @@ QUESTION: ${lastMessage.content}
     // 5. Generate response with Hugging Face (Streaming)
     const stream = new ReadableStream({
       async start(controller) {
+        console.log("5. Starting stream controller...");
         let fullResponse = "";
         try {
           // Use the traceable wrapper
           const responseStream = await generateResponse(messages, systemPrompt);
 
           for await (const chunk of responseStream) {
-            const content = chunk.choices[0]?.delta?.content || "";
+            console.log("Chunk:", JSON.stringify(chunk));
+            const content = chunk.choices?.[0]?.delta?.content || "";
             if (content) {
               fullResponse += content;
               controller.enqueue(new TextEncoder().encode(content));
