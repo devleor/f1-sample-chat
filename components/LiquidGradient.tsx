@@ -151,18 +151,19 @@ export default function LiquidGradient({ className }: { className?: string }) {
         const uniforms = {
             uTime: { value: 0 },
             uResolution: { value: new THREE.Vector2(width, height) },
-            uColor1: { value: new THREE.Vector3(0.945, 0.353, 0.133) }, // Orange
-            uColor2: { value: new THREE.Vector3(0.039, 0.055, 0.153) }, // Navy
-            uColor3: { value: new THREE.Vector3(0.945, 0.353, 0.133) },
-            uColor4: { value: new THREE.Vector3(0.039, 0.055, 0.153) },
-            uColor5: { value: new THREE.Vector3(0.945, 0.353, 0.133) },
-            uColor6: { value: new THREE.Vector3(0.039, 0.055, 0.153) },
+            // Senna / Brazil Palette
+            uColor1: { value: new THREE.Vector3(0.996, 0.867, 0.0) }, // Yellow
+            uColor2: { value: new THREE.Vector3(0.004, 0.592, 0.2) }, // Green
+            uColor3: { value: new THREE.Vector3(0.996, 0.867, 0.0) }, // Yellow
+            uColor4: { value: new THREE.Vector3(0.004, 0.592, 0.2) }, // Green
+            uColor5: { value: new THREE.Vector3(0.996, 0.867, 0.0) }, // Yellow
+            uColor6: { value: new THREE.Vector3(0.004, 0.592, 0.2) }, // Green
             uSpeed: { value: 1.5 },
             uIntensity: { value: 1.8 },
             uTouchTexture: { value: touchTexture.texture },
             uGrainIntensity: { value: 0.08 },
             uZoom: { value: 1.0 },
-            uDarkNavy: { value: new THREE.Vector3(0.039, 0.055, 0.153) },
+            uDarkNavy: { value: new THREE.Vector3(0.004, 0.129, 0.412) }, // Blue
             uGradientSize: { value: 0.45 },
             uGradientCount: { value: 12.0 },
             uColor1Weight: { value: 0.5 },

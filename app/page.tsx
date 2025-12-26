@@ -17,6 +17,7 @@ import LiquidGradient from "@/components/LiquidGradient"
 import { OrganicBorder } from "@/components/OrganicBorder"
 import { useTranslation } from "@/hooks/useTranslation"
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react"
+import CustomCursor from "@/components/CustomCursor"
 
 // --- Types ---
 
@@ -55,6 +56,7 @@ export default function Home() {
   const [showSplash, setShowSplash] = React.useState(true) // Restoring Splash Screen
   const [isInputPaused, setIsInputPaused] = React.useState(false)
   const { t } = useTranslation()
+  const [showBackgroundEffect, setShowBackgroundEffect] = React.useState(false)
 
   // Context / Knowledge Base State
   const [isContextModalOpen, setIsContextModalOpen] = React.useState(false)
@@ -434,7 +436,8 @@ export default function Home() {
   ]
 
   return (
-    <div className="flex h-screen w-full bg-black text-white font-sans overflow-hidden selection:bg-zinc-700/30">
+    <div className="flex h-screen w-full bg-black text-white font-sans overflow-hidden selection:bg-zinc-700/30 cursor-none">
+      <CustomCursor />
 
       {/* Mobile Sidebar Overlay */}
       <AnimatePresence>
@@ -494,25 +497,27 @@ export default function Home() {
                 <ScrollArea className="h-[calc(100vh-250px)]">
                   <div className="space-y-1">
                     {sessions.map(session => (
-                      <button
+                      <div
                         key={session.id}
                         onClick={() => loadSession(session.id)}
                         className={cn(
-                          "w-full text-left px-4 py-3 rounded-xl text-sm transition-all group flex items-center justify-between relative overflow-hidden",
+                          "w-full text-left px-4 py-3 rounded-xl text-sm transition-all group flex items-center justify-between relative overflow-hidden cursor-pointer",
                           currentSessionId === session.id
                             ? "bg-white/10 text-white font-medium shadow-[0_0_15px_rgba(255,255,255,0.05)] border border-white/5"
                             : "text-zinc-400 hover:bg-white/5 hover:text-zinc-200 hover:border-white/5 border border-transparent"
                         )}
                       >
                         {currentSessionId === session.id && (
-                          <div className="absolute inset-0 bg-gradient-to-r from-white/5 to-transparent opacity-50" />
+                          <div className="absolute inset-0 bg-gradient-to-r from-white/5 to-transparent opacity-50 pointer-events-none" />
                         )}
                         <span className="truncate max-w-[180px]">{session.title}</span>
-                        <Trash2
-                          className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity hover:text-red-400"
+                        <button
+                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/10 rounded"
                           onClick={(e) => deleteSession(e, session.id)}
-                        />
-                      </button>
+                        >
+                          <Trash2 className="w-3 h-3 text-zinc-400 hover:text-red-400" />
+                        </button>
+                      </div>
                     ))}
                   </div>
                 </ScrollArea>
@@ -535,10 +540,20 @@ export default function Home() {
                 <Database className="w-4 h-4" />
                 {!isSidebarCollapsed && <span>{t('knowledge_base')}</span>}
               </Button>
-              <Button variant="ghost" className={cn("w-full justify-start gap-2 text-zinc-400 hover:text-white text-xs", isSidebarCollapsed && "justify-center px-0")}>
-                <User className="w-4 h-4" />
-                {!isSidebarCollapsed && t('hire_me')}
+              <Button
+                variant="ghost"
+                className={cn("w-full justify-start gap-2 text-zinc-400 hover:text-white text-xs", isSidebarCollapsed && "justify-center px-0")}
+                onClick={() => setShowBackgroundEffect(!showBackgroundEffect)}
+              >
+                <Layers className="w-4 h-4 text-purple-400" />
+                {!isSidebarCollapsed && <span>{showBackgroundEffect ? "Disable Effects" : "Enable Effects"}</span>}
               </Button>
+              <a href="https://devleor.io" target="_blank" rel="noopener noreferrer" className="block w-full">
+                <Button variant="ghost" className={cn("w-full justify-start gap-2 text-zinc-400 hover:text-white text-xs", isSidebarCollapsed && "justify-center px-0")}>
+                  <User className="w-4 h-4" />
+                  {!isSidebarCollapsed && t('hire_me')}
+                </Button>
+              </a>
             </div>
           </div>
         </motion.div>
@@ -547,9 +562,11 @@ export default function Home() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col relative w-full">
         {/* Dynamic Background */}
-        <div className="absolute inset-0 z-0 pointer-events-none opacity-40">
-          <LiquidGradient />
-        </div>
+        {showBackgroundEffect && (
+          <div className="absolute inset-0 z-0 pointer-events-none opacity-40">
+            <LiquidGradient />
+          </div>
+        )}
 
         {/* Header */}
         {/* Mobile Menu Trigger */}
@@ -710,22 +727,56 @@ export default function Home() {
             )}
 
             {/* Input Bar */}
-            <OrganicBorder isPaused={isInputPaused}>
-              <div className="bg-zinc-800/40 backdrop-blur-xl border border-white/10 rounded-[2rem] p-1.5 focus-within:bg-zinc-800/60 focus-within:border-white/20 transition-all shadow-2xl flex items-center gap-2">
+            {/* Input Bar */}
+            {showBackgroundEffect ? (
+              <OrganicBorder isPaused={isInputPaused}>
+                <div className="bg-zinc-800/40 backdrop-blur-xl border border-white/10 rounded-[2rem] p-1.5 focus-within:bg-zinc-800/60 focus-within:border-white/20 transition-all shadow-2xl flex items-center gap-2">
+                  <div className="p-2">
+                    <Plus className="w-6 h-6 text-zinc-400 cursor-pointer hover:text-white transition-colors" /> {/* Apple-style attachment icon */}
+                  </div>
+                  <Input
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onFocus={() => setIsInputPaused(true)}
+                    onBlur={() => setIsInputPaused(false)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault()
+                        if (!input.trim()) return
+                        sendMessage()
+                        setIsInputPaused(false)
+                      }
+                    }}
+                    placeholder={t('enter_message')}
+                    className="flex-1 bg-transparent border-0 focus-visible:ring-0 text-white placeholder:text-zinc-500 text-[1rem] h-12 px-2 shadow-none"
+                    disabled={isLoading}
+                  />
+                  <Button
+                    onClick={() => sendMessage()}
+                    disabled={isLoading || !input.trim()}
+                    size="icon"
+                    className={cn(
+                      "rounded-full w-10 h-10 transition-all duration-300",
+                      input.trim() ? "bg-white hover:bg-zinc-200 text-black scale-100" : "bg-zinc-800 text-zinc-500 scale-90 opacity-0 md:opacity-100"
+                    )}
+                  >
+                    {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4 ml-0.5" />}
+                  </Button>
+                </div>
+              </OrganicBorder>
+            ) : (
+              <div className="bg-zinc-900 border border-zinc-800 rounded-[2rem] p-1.5 focus-within:border-zinc-700 transition-all flex items-center gap-2">
                 <div className="p-2">
-                  <Plus className="w-6 h-6 text-zinc-400 cursor-pointer hover:text-white transition-colors" /> {/* Apple-style attachment icon */}
+                  <Plus className="w-6 h-6 text-zinc-400 cursor-pointer hover:text-white transition-colors" />
                 </div>
                 <Input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  onFocus={() => setIsInputPaused(true)}
-                  onBlur={() => setIsInputPaused(false)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault()
                       if (!input.trim()) return
                       sendMessage()
-                      setIsInputPaused(false)
                     }
                   }}
                   placeholder={t('enter_message')}
@@ -744,12 +795,9 @@ export default function Home() {
                   {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4 ml-0.5" />}
                 </Button>
               </div>
-            </OrganicBorder>
+            )}
             <div className="text-center mt-3 text-xs text-zinc-500 font-medium flex items-center justify-center gap-2">
               <span>Senna AI can make mistakes. Check important information.</span>
-              <a href="https://devleor.io" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-2 py-0.5 rounded border border-white/10 transition-colors">
-                {t('hire_me')}
-              </a>
             </div>
           </div>
         </div>

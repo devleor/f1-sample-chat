@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { DataAPIClient } from "@datastax/astra-db-ts";
 import { HfInference } from "@huggingface/inference";
 import redis from "@/lib/redis";
-import { traceable } from "langsmith/traceable";
-import { ChatPromptTemplate } from "@langchain/core/prompts";
 import dotenv from "dotenv";
 import path from "path";
 
@@ -25,12 +23,8 @@ relevantKeys.forEach(k => {
 
 const hf = new HfInference(process.env.HUGGINGFACE_API_KEY);
 
-// Traceable wrapper for HF generation
-const generateResponse = traceable(async (messages: any[], systemPrompt: string) => {
-  // DEBUG: Check vars inside request
-  const pName = process.env.LANGCHAIN_PROJECT || process.env.LANGSMITH_PROJECT || "default";
-  console.log("DEBUG: Inside Traceable - Resolved Project Name:", pName);
-
+// Direct HF generation (LangChain Removed)
+const generateResponse = async (messages: any[], systemPrompt: string) => {
   const responseStream = hf.chatCompletionStream({
     model: "Qwen/Qwen2.5-72B-Instruct",
     messages: [
@@ -42,10 +36,7 @@ const generateResponse = traceable(async (messages: any[], systemPrompt: string)
   });
 
   return responseStream;
-}, {
-  name: "generate_response",
-  project_name: process.env.LANGCHAIN_PROJECT || process.env.LANGSMITH_PROJECT
-});
+};
 
 // Astra DB setup
 const client = new DataAPIClient(process.env.ASTRA_DB_APPLICATION_TOKEN);
