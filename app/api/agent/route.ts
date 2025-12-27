@@ -4,22 +4,31 @@ import { astraVectorSearchTool } from "@/app/lib/agents/tools/vector-tool"; // U
 // ../../lib/agents/tools/vector-tool
 import { NextRequest, NextResponse } from "next/server";
 
-// Initialize Model
-// Ensure GOOGLE_API_KEY is in .env
-const model = new Gemini({
-    model: "gemini-1.5-flash", // or gemini-pro
-});
+// Lazy initialization to avoid build-time errors
+let agent: LlmAgent | null = null;
 
-// Initialize Agent
-const agent = new LlmAgent({
-    name: "f1-agent",
-    model: model,
-    tools: [astraVectorSearchTool],
-    instruction: `You are an expert F1 assistant.
-  - Use the 'search_f1_knowledge' tool to answer questions about F1.
-  - If the search results are not sufficient, admit you don't know rather than hallucinating.
-  - Keep answers concise and engaging.`,
-});
+function getAgent() {
+    if (agent) return agent;
+
+    console.log("Initializing Agent...");
+
+    // Initialize Model
+    const model = new Gemini({
+        model: "gemini-1.5-flash",
+    });
+
+    // Initialize Agent
+    agent = new LlmAgent({
+        name: "f1-agent",
+        model: model,
+        tools: [astraVectorSearchTool],
+        instruction: `You are an expert F1 assistant.
+      - Use the 'search_f1_knowledge' tool to answer questions about F1.
+      - If the search results are not sufficient, admit you don't know rather than hallucinating.
+      - Keep answers concise and engaging.`,
+    });
+    return agent;
+}
 
 export async function POST(req: NextRequest) {
     try {
@@ -33,7 +42,7 @@ export async function POST(req: NextRequest) {
         console.log(`[Agent] Received prompt: ${prompt}`);
 
         // Run the agent
-        const response = await (agent as any).run({
+        const response = await (getAgent() as any).run({
             input: prompt
         });
 
